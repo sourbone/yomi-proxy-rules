@@ -1,0 +1,41 @@
+name: Merge GFWList and Custom Rules
+
+on:
+  schedule:
+    - cron: '17 3 * * *'   # 每天 UTC 3:17（北京时间 11:17）自动运行
+  workflow_dispatch:        # 允许手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download latest gfwlist
+        run: |
+          curl -L -o gfwlist_raw.txt "https://gitlab.com/gfwlist/gfwlist/raw/master/gfwlist.txt"
+
+      - name: Decode gfwlist (if base64) and merge with custom rules
+        run: |
+          # 判断是否为 base64 编码，如果是则解码
+          if head -c 200 gfwlist_raw.txt | grep -q '^\[AutoProxy'; then
+            mv gfwlist_raw.txt gfwlist_decoded.txt
+          else
+            base64 -d gfwlist_raw.txt > gfwlist_decoded.txt 2>/dev/null || cp gfwlist_raw.txt gfwlist_decoded.txt
+          fi
+
+          # 合并：gfwlist 在前，自定义规则在后
+          cat gfwlist_decoded.txt my-rules.txt > final-rules.txt
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add final-rules.txt
+          git diff --staged --quiet || {
+            git commit -m "Auto-update merged rules $(date -u +'%Y-%m-%d')"
+            git push
+          }
