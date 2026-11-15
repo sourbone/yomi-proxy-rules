@@ -28,7 +28,7 @@ jobs:
           fi
 
           # 合并：gfwlist 在前，自定义规则在后
-          cat gfwlist_decoded.txt my-rules.txt > final-rules.txt
+          cat gfwlist_decoded.txt 自定义rules.txt > final-rules.txt
 
       - name: Commit and push if changed
         run: |
